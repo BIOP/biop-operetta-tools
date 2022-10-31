@@ -1,0 +1,132 @@
+//***********************************************************************************************
+//      Description:  Extract Flatfield corrected images
+//
+//      Copyright ©2015 PerkinElmer. All Rights Reserved.
+//
+//      Date Created: 2015-09-14
+//      Author: Achim Kirsch
+//
+//      Status: test
+//
+//+encrypt
+// $Id: $
+// $HeadURL: $
+//-encrypt
+//
+/////////////////
+#strict
+
+Printf("\nThis Script applies the Harmony flatfield correction to exported measurements. \n\n")
+Printf("""{Please first select an "index.ref.xml" or "index.idx.xml" file.
+Then the script will load all images that belong to this measurement and write
+the flatfield corrected images into the same folder where the index-file is located.
+Flatfield corrected images start with the letters "flex_".
+
+It will always apply the maximally available correction (Basic or Advanced).
+	
+}")
+
+GetFile("Choose a index file" | FileName)
+if (FileName=="") {
+	printf("No index.file was selected.\n")
+	stop()
+}
+
+PathSplit(FileName | DirName, extension)
+if (Lower(extension)!=".xml") {
+	printf("No index-xml file was selected.\n")
+	stop()
+}
+
+// Go to the directory where we will store the images
+ReadXml(filename | XML)
+If(XML.EvaluationInputData.Maps == xmlnull)
+{
+	Printf("The file you provided does not contain the necessary flatfield correction information. Either it is a completely wrong file, or the flatfield correction has already been applied to the images referred to in this file.\nNo additional processing will be done and the script stops here. If you really want to generate flatfield corrected images, please select a different index-XML file.\n")
+	stop()
+}
+
+DirName = DirName&"flex/";
+Printf("""{The corrected images will be stored in: "%s"}", dirname)
+MkDir(DirName)
+
+// get all the magic data
+DataBundle::Import(FileName | DataBundle)
+DataBundle::IteratorFirstData("f", "L0[EACH Field]", DataBundle | data, iKey, DataBundle)
+
+PrepareProfiles(data | Profiles, Mode, CacheLabel)
+
+Printf("\n\nProfile Mode: %s\n",Mode)
+
+Printf("Total number of images: %i\n",DataBundle.Reference.ImageTable.@rowcount)
+i_count = 1;
+
+// Apply the profiles as long as there is data
+while(iKey.status) {
+	foreach(data.@rowrange| i) {
+		Profile = Profiles[ data.channel[i] ];
+		FlatField::ApplyCorrection(data.image[i], Profile, Mode, CacheLabel | image)
+
+		Table::Filter(data, "RowIndex==_.i" | Table)
+		table.sourceimage = vec(image);
+		table.compressionType = vec("LZW");
+		Sprintf(filename,"flex_r%02ic%02if%02ip%02i-ch%isk%ifk1fl1.tiff", table.row[0], table.column[0],table.field[0], table.plane[0], table.channel[0],table.timepoint[0]-data.timepoint.@min+1)
+		WriteFlex(sourcedata=table, filename=DirName&filename)
+		If(i_count ~ 10 == 0) {
+			Printf("%d",i_count)
+			If(i_count ~ 100 == 0) {
+				Printf("\n")
+			}
+		} Else {
+			Printf(".")
+		}
+		i_count += 1;
+	}
+	// Next Field/Well
+	DataBundle::IteratorNextData(iKey, DataBundle | data, iKey, DataBundle)
+}
+Printf("\nCreating a new index file.\n")
+
+// Prepare a new "index.flex.xml" file
+// Updating the Filenames to point to the local flex_... files:
+
+// Getting the timepoint calculation offset
+timepointMin = XML.EvaluationInputData.Images.@twintable.Image_TimepointID[0].@min;
+// Iterating through the whole XML-Tree to replace the Image URLs
+xmlpoint = XML.EvaluationInputData.Images.Image;
+While(xmlpoint != xmlnull)
+{
+	Sprintf(URL, "flex_r%02ic%02if%02ip%02i-ch%isk%ifk1fl1.tiff", 1*xmlpoint.Row.@text,1*xmlpoint.Col.@text,1*xmlpoint.FieldID.@text,1*xmlpoint.PlaneID.@text,1*xmlpoint.ChannelID.@text,1*xmlpoint.TimepointID.@text-timepointMin+1)
+
+	temp = xml("URL",URL);
+	XmlReplace(xmlpoint.URL, temp | node)
+	xmlpoint = xmlpoint.@nexttwin;
+}
+// Discarding the Maps which stor the Flatfield correction information - these images are already corrected!
+XmlReplace(XML.EvaluationInputData.Maps, xmlnull | node)
+// Write the XML to a new file
+WriteXml(DirName&"index.flex.xml", XML)
+
+
+
+proc PrepareProfiles(
+	table data in,
+	vector Profiles out,
+	string Mode out,
+	string CacheLabel out
+) "Create a lookup vector of decoded flatfield profiles"
+{
+	Table::Uniq(tbl(channel=data.channel, FlatFieldProfile=data.FlatFieldProfile, ChannelType=data.ChannelType), "channel" | fftable=table)
+	Flatfield::DecodeProfile(fftable.FlatfieldProfile, vNeedsCorrection=(fftable.ChannelType=="Fluorescence") | FlatFieldProfiles, yBackgroundCorrection, yForegroundCorrection)
+
+	// i-th element corresponds to channel i
+	Profiles=filledvec(fftable.channel.@max+1, cnt());
+	foreach(fftable.@rowrange, "i" | i ) {
+		Profiles[fftable.channel[i]] =  FlatFieldProfiles[i];
+	}
+
+	Mode = iif(yForegroundCorrection, "Foreground", iif(yBackgroundCorrection, "Background", "None"));
+	// As correction needs expensive bg calculation per image we cache the results by measurement id.
+
+	CacheLabel = data.L2ID[0];
+}
