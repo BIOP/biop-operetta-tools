@@ -37,15 +37,14 @@ The resulting flatfield iamgesd can now be processed either using the [BIOP Oper
 > **Note**
 > The orignal script provided by PerkinElmer is provided in the `Original Script` folder. It uses a different naming convention for the resulting XML file, (appends `_flex` to the name), which is incompatible with importing the data to OMERO.
 
-# Visualizing Operetta data
+# Working with Operetta data
 
-To load Operetta data, whether it is flatfieled or not, the following tools are available
+To load, view or resave Operetta data, whether it is flatfieled or not, the following tools are available:
 
 | Tool | Link | Pros | Cons |
 | -----|------|------|------|
-| BIOP Operetta Importer | https://github.com/BIOP/ijp-operetta-importer | Can load, downsample, fuse and export tiled versions as tiffs | Requires yet another export. |
-| BDV Playground | https://imagej.net/plugins/bdv/playground | Has a dedicated `Open [Operetta Dataset]` command for BigDataViewer. Many export modes | Visualization and export are in beta. |
+| BIOP Operetta Importer | https://github.com/BIOP/ijp-operetta-importer | Can load, downsample, fuse and export tiled versions as tiffs(*) | Requires yet another resave export. |
+| BDV Playground | https://imagej.net/plugins/bdv/playground | Has a dedicated `Open [Operetta Dataset]` command for BigDataViewer. Many export modes. Convenient to visualize data per well | Visualization and export are in beta. |
 | QuPath | https://qupath.github.io/ | Native support to open the `index.xml` file| Only displays individual fields (no stitching). Can become unresponsive with too many images in the QuPath project|
-|Old Operetta Import Script | [BIOP_Operetta_Import.groovy](main/deprecated/BIOP_Operetta_Import.groovy) | Just one script | No longer maintained. use [BIOP Operetta Importer](https://github.com/BIOP/ijp-operetta-importer) |
 
-The `BIOP_Operetta_Import.groovy` script in the `deprecated` folder is the precursor to the [BIOP Operetta Importer](https://github.com/BIOP/ijp-operetta-importer) plugin which is available though the PTBIOP Update site
+(*) The `BIOP_Operetta_Import.groovy` script in the `deprecated` folder is the precursor to the [BIOP Operetta Importer](https://github.com/BIOP/ijp-operetta-importer) plugin which is available though the PTBIOP Update site
