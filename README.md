@@ -43,8 +43,8 @@ To load Operetta data, whether it is flatfieled or not, the following tools are 
 
 | Tool | Link | Pros | Cons |
 | -----|------|------|------|
-| BIOP Operetta Importer | https://github.com/BIOP/ijp-operetta-importer | Can load, fuse and export tiled versions as tiffs | Requires yet another export. |
-| BDV Playground | https://imagej.net/plugins/bdv/playground | Has a dedicated `Open [Operetta Dataset]` command for BigDataViewer | Visualization and export are in beta.  |
+| BIOP Operetta Importer | https://github.com/BIOP/ijp-operetta-importer | Can load, downsample, fuse and export tiled versions as tiffs | Requires yet another export. |
+| BDV Playground | https://imagej.net/plugins/bdv/playground | Has a dedicated `Open [Operetta Dataset]` command for BigDataViewer. Many export modes | Visualization and export are in beta. |
 | QuPath | https://qupath.github.io/ | Native support to open the `index.xml` file| Only displays individual fields (no stitching). Can become unresponsive with too many images in the QuPath project|
 |Old Operetta Import Script | [BIOP_Operetta_Import.groovy](main/deprecated/BIOP_Operetta_Import.groovy) | Just one script | No longer maintained. use [BIOP Operetta Importer](https://github.com/BIOP/ijp-operetta-importer) |
 
