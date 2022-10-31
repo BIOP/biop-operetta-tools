@@ -46,7 +46,7 @@ If(XML.EvaluationInputData.Maps == xmlnull)
 	stop()
 }
 
-DirName = DirName&"flex/";
+DirName = DirName&"flatfield/";
 Printf("""{The corrected images will be stored in: "%s"}", dirname)
 MkDir(DirName)
 
@@ -87,7 +87,7 @@ while(iKey.status) {
 }
 Printf("\nCreating a new index file.\n")
 
-// Prepare a new "index.flex.xml" file
+// Prepare a new "index.xml" file
 // Updating the Filenames to point to the local flex_... files:
 
 // Getting the timepoint calculation offset
