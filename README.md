@@ -44,7 +44,7 @@ To load, view or resave Operetta data, whether it is flatfieled or not, the foll
 | Tool | Link | Pros | Cons |
 | -----|------|------|------|
 | BIOP Operetta Importer | https://github.com/BIOP/ijp-operetta-importer | Can load, downsample, fuse and export tiled versions as tiffs(*) | Requires yet another resave export. |
-| BDV Playground | https://imagej.net/plugins/bdv/playground | Has a dedicated `Open [Operetta Dataset]` command for BigDataViewer. Many export modes. Convenient to visualize data per well | Visualization and export are in beta. |
+| BDV Playground | https://imagej.net/plugins/bdv/playground/bdv-playground | Has a dedicated `Open [Operetta Dataset]` command for BigDataViewer. Many export modes. Convenient to visualize data per well | Visualization and export are in beta. |
 | QuPath | https://qupath.github.io/ | Native support to open the `index.xml` file| Only displays individual fields (no stitching). Can become unresponsive with too many images in the QuPath project|
 
 (*) The `BIOP_Operetta_Import.groovy` script in the `deprecated` folder is the precursor to the [BIOP Operetta Importer](https://github.com/BIOP/ijp-operetta-importer) plugin which is available though the PTBIOP Update site
