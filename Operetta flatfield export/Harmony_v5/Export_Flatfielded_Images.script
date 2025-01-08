@@ -1,0 +1,176 @@
+//***********************************************************************************************
+//      Description:  Extract Flatfield corrected images
+//
+//      Copyright ©2024 Revvity. All Rights Reserved.
+//
+//      Date Created: 2015-09-14
+//      Author: Achim Kirsch
+//
+//      Status: released
+//
+//+encrypt
+// $Id: $
+// $HeadURL: $
+//-encrypt
+//
+/////////////////
+//	2024-03-20: changed Filename to "t" instead of "sk/fk/fl"
+//	2024-06-21: added ResultPrefix as an input parameter
+/////////////////
+//	To change the prefix, specify it on the command call. For no prefix specify: -s ResultPrefix=
+//	By default a prefix is added, as the new files would have the same name as the original files.
+//
+//	To run the script without user interaction from command line use something like...
+//	acapella.exe -s FileName=C:\temp\index.xml Export_Flatfielded_Images.script
+//
+// 	To disable compression of the images specify "-s CompString=none " on the command line. E.g.
+//	acapella.exe -s FileName=C:\temp\index.xml -s CompString=none Export_Flatfielded_Images.script
+// /////////////////////////////////////////////////////
+#strict
+
+Printf("\nExport Flatfielded Images - Rev.2\n")
+Printf("\nThis Script applies the Harmony flatfield correction to exported measurements. \n\n")
+Printf("""{Please first select an "index.xml", "index.ref.xml" or "index.idx.xml" file.
+The script will load all images that belong to this measurement and write
+the flatfield corrected images into a "flex" sub-folder of where the index-file is located.
+Flatfield corrected images start with the letters "flex_", unless otherwise specified
+during the call.
+
+It will always apply the maximally available correction (Basic or Advanced).
+
+Should errors while loading the images appear, the script will generat "!" during processing.
+	
+}")
+ResultPrefix = eval("ResultPrefix", "flex_");
+
+Compression = eval("CompString", "LZW");	// Either the compression specified, or default "LZW"
+
+FileName = eval("FileName", "");
+if(FileName=="") {
+	GetFile("Choose a index file" , FileName=FileName | FileName)
+}
+if (FileName=="") {
+	printf("No index.file was selected.\n")
+	stop()
+}
+
+PathSplit(FileName | DirName, extension)
+if (Lower(extension)!=".xml") {
+	printf("No index-xml file was selected.\n")
+	stop()
+}
+
+ReadXml(filename | XML)
+XML::ApplyXPath("//Maps/Map/Entry/FlatfieldProfile", XML | nodes)
+if (nodes.@length == 0)
+{
+	Printf("The file you provided does not contain the necessary flatfield correction information. Either it is a completely wrong file, or the flatfield correction has already been applied to the images referred to in this file.\nNo additional processing will be done and the script stops here. \n")
+	stop()
+}
+
+// Go to the directory where we will store the images
+DirName = DirName&"flex/";
+Printf("""{The corrected images will be stored in: "%s\n"}", dirname)
+MkDir(DirName)
+
+Dbg::AddLogRule("databundle","ImageURL","Could not open file","disable")
+Dbg::AddLogRule("run","virtualimage","Could not open file","disable")
+
+// get all the magic data
+DataBundle::Import(FileName | DataBundle)
+DataBundle::IteratorFirstData("f", "L0[EACH Field]", DataBundle | data, iKey, DataBundle)
+
+PrepareProfiles(data | Profiles, Mode, CacheLabel)
+
+Printf("\nProfile Mode: %s\n",Mode)
+
+Printf("Total number of images: %i\n",DataBundle.Reference.ImageTable.@rowcount)
+i_count = 1;
+
+// Find all Image entries and corresponding IDs
+ImageNodes = XML.EvaluationInputData.Images.Image.@twins;
+ImageIDs = vop(ImageNodes).id.@text;
+
+// Find all Well/Image entries and corresponding IDs
+Wells = XML.EvaluationInputData.Wells.Well.@twins;
+WellIms = vop(Wells).Image.@twins;
+Flatten(WellIms | WellIms=result)
+WellImIDs = vop(WellIms).@attr.id;
+
+// Apply the profiles as long as there is data
+while(iKey.status) {
+
+	MatchVectors(data.id, ImageIDs, Retain="left" | order=Matches.right)
+	data.ImageNode = ImageNodes[order];
+	MatchVectors(data.id, WellImIDs, Retain="left" | order=Matches.right)
+	data.WellIm = WellIms[order];
+	
+	foreach(data.@rowrange| i) {
+		
+		if(!defined(" data.image[i].@sticky.error")) {
+			FlatField::ApplyCorrection( data.image[i], Profiles[ data.channel[i] ], Mode, CacheLabel | image)
+
+			table = data[i:i+1];
+			table.sourceimage = vec(image);
+			table.compressionType = vec(Compression);
+			Sprintf(filename,ResultPrefix&"r%02ic%02if%02ip%02i-ch%it%02i.tiff", table.row[0], table.column[0],table.field[0], table.plane[0], table.channel[0],table.timepoint[0]-data.timepoint.@min+1)
+			WriteFlex(sourcedata=table, filename=DirName&filename, TilingThreshold=16000000)
+			XmlReplace(data.ImageNode[i].URL, xml("URL", filename) | )
+			PrintSymbol = ".";
+		} else {
+			// Remove ghosts
+			XmlReplace(data.WellIm[i], XmlNull |)
+			XmlReplace(data.ImageNode[i], XmlNull |)			
+			PrintSymbol = "!";
+		}
+
+		If(i_count ~ 10 == 0) {
+			Printf("%d",i_count)
+			If(i_count ~ 100 == 0) {
+				Printf("\n")
+			}
+		} Else {
+			Printf(PrintSymbol)
+		}
+		i_count += 1;		
+	}
+	
+	// Next Field/Well
+	DataBundle::IteratorNextData(iKey, DataBundle | data, iKey, DataBundle)
+}
+Printf("\nCreating a new index file.\n")
+// Prepare a new "index.xml" file
+
+// Discarding the Maps which store the Flatfield correction information - these images are already corrected!
+// Delete FlatField Nodes in Maps
+XML::ApplyXPath("//Maps/Map/Entry/FlatfieldProfile", XML | XML, nodes)
+foreach(nodes | node=i) {
+	XmlReplace(node.@parent, XmlNull | )
+}
+
+// Write the XML to a new file
+WriteXml(DirName&"index.xml", XML)
+
+
+
+proc PrepareProfiles(
+	table data in,
+	vector Profiles out,
+	string Mode out,
+	string CacheLabel out
+) "Create a lookup vector of decoded flatfield profiles"
+{
+	Table::Uniq(tbl(channel=data.channel, FlatFieldProfile=data.FlatFieldProfile, ChannelType=data.ChannelType), "channel" | fftable=table)
+	Flatfield::DecodeProfile(fftable.FlatfieldProfile, vNeedsCorrection=(fftable.ChannelType=="Fluorescence") | FlatFieldProfiles, yBackgroundCorrection, yForegroundCorrection)
+
+	// i-th element corresponds to channel i
+	Profiles=filledvec(fftable.channel.@max+1, cnt());
+	foreach(fftable.@rowrange, "i" | i ) {
+		Profiles[fftable.channel[i]] =  FlatFieldProfiles[i];
+	}
+
+	Mode = iif(yForegroundCorrection, "Foreground", iif(yBackgroundCorrection, "Background", "None"));
+	// As correction needs expensive bg calculation per image we cache the results by measurement id.
+
+	CacheLabel = data.L2ID[0];
+}
