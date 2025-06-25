@@ -1,5 +1,3 @@
-# This project is archived and has been replaced by https://github.com/BIOP/ijp-operetta-importer
-
 # BIOP Operetta Tools
 
 Scripts and tools used for the PerkinElmer Operetta System at the EPFL BioImaging & Optics Platform. 
