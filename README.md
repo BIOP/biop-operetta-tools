@@ -1,7 +1,7 @@
 # BIOP Operetta Tools
 
 Scripts and tools used for the PerkinElmer Operetta System at the EPFL BioImaging & Optics Platform. 
-For a more thorough tutorial on our recommendations for using our PerkinElmer Operetta and data export protocols, you can check out our [BIOP Wiki page](https://wiki-biop.epfl.ch/en/Microscopy/WF15-PerkinElmerOperettaCLS)
+For a more thorough tutorial on our recommendations for using our PerkinElmer Operetta and data export protocols, you can check out our [BIOP Wiki page](https://wiki-biop.epfl.ch/en/microscopy/wf15)
 
 # Export flatfield images
 
